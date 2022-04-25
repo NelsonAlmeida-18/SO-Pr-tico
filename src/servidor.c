@@ -7,47 +7,38 @@
 #include <string.h>
 
 
-int main(int argc, char* argv[]){
-	
-	if(argc != 3){
-		fprintf(stderr, "Uso: [PATH] [SDSTORE PATH]\n");
-		return 1;
-	}
+char* sdStoreDir="../SDStore-transf";
 
-	int ficheiro = open(argv[0], O_RDONLY, 0666);//verificar se é argv 0 ou 1
-	if(ficheiro == -1){
-		perror("Erro na abertura do config.txt");
-		return 1;
-	}
-	
-	int client_server = open("cliente_servidor_fifo", O_RDONLY, 0666);
-	if(client_server == -1){
-		perror("Erro na abertura do pipe");
-		return 1;
-	}
 
-	int bytesRead = 0;
+int receiveRequest(){
+	int cliente_servidor = open("cliente_servidor_fifo",O_RDONLY, 0666);
 	char buffer[1024];
+	int bytesRead=read(cliente_servidor, buffer,sizeof(buffer));
+	write(1,buffer,bytesRead);
+	close(cliente_servidor);
+	return 0;
+}
 
-	while((bytesRead = read(client_server, buffer, sizeof(buffer))) > 0){
-		write(1, buffer, bytesRead);
-	}
+int sendStatus(){
+	int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY,0666);
+	char *status = "teste";
+	write(servidor_cliente,status,sizeof(status));
+	close(servidor_cliente);
+	return 0;
+}
 
-	close(client_server);
 
-	int server_client = open("servidor_cliente_fifo", O_WRONLY|O_TRUNC, 0666);
-	if(server_client == -1){
-		perror("servidor_cliente_fifo");
+int main(int argc, char* argv[]){
+
+	if(argc !=3){
+		fprintf(stderr, "USAGE: ./sdstore ...\n");
 		return 1;
 	}
 
-	while((bytesRead = read(ficheiro, buffer, sizeof(buffer))) > 0){
-		write(server_client, buffer, bytesRead);
+	while(1){
+		receiveRequest();
+		sendStatus();
 	}
-
-	close(server_client);
-	close(ficheiro);
 
 	return 0;
-
 }
