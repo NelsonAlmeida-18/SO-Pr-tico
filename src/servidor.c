@@ -19,9 +19,8 @@ int receiveRequest(){
 	return 0;
 }
 
-int sendStatus(){
+int sendStatus(char *status){
 	int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY,0666);
-	char *status = "teste";
 	write(servidor_cliente,status,sizeof(status));
 	close(servidor_cliente);
 	return 0;
@@ -37,7 +36,7 @@ int main(int argc, char* argv[]){
 
 	while(1){
 		receiveRequest();
-		sendStatus();
+		sendStatus("done");
 	}
 
 	return 0;
