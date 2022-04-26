@@ -12,7 +12,16 @@ char* sdStoreDir="../SDStore-transf";
 int execCommands(char *commands){
 
 	int source = open(&commands[0], O_RDONLY, 0666);
+	if(source == -1){
+		perror("Erro na origem\n");
+		return 1;
+	}
+
 	int dest = open(&commands[1], O_WRONLY|O_TRUNC|O_CREAT, 0666);
+	if(dest == -1){
+		perror("Erro no destino\n");
+		return 1;
+	}
 
 	int fd[2];
 	if(pipe(fd) == -1){
@@ -74,7 +83,6 @@ char* receiveRequest(){
 		}
 
 		commands[i] = NULL;
-
 	}
 
 	return *commands;
