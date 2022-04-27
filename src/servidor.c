@@ -32,14 +32,13 @@ int execCommands(char **commands){
 				return 1;
 			}
 
-			execlp(, commands[1]);
+			execlp(strcat("/.",commands[i]), strcat("/.", commands[i]), commands[1], commands[2], NULL);
 		}
 	}
 
 	wait(NULL);
 	close(source);
 	close(dest);
-	close(fd[0]);
 	return 0;
 }
 
