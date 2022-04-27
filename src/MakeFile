@@ -1,0 +1,3 @@
+server: gcc -Wall servidor.c -o servidor
+
+cliente: gcc -Wall cliente.c -o cliente 
