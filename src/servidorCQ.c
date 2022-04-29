@@ -8,17 +8,30 @@
 
 
 char* sdStoreDir="../SDStore-transf";
-int size = 0;
+int queuesize = 0;
+int size;
+char ***queue;
 
-int execCommands(char **commands){
+int sendStatus(char *status){
+	int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY|O_TRUNC,0666);
+	write(servidor_cliente,status,sizeof(status));
+	close(servidor_cliente);
+	return 0;
+}
 
-	int source = open(commands[0], O_RDONLY, 0666);
+
+
+int execCommands(){
+	//sendStatus("processing\n");
+	printf("Path1  %s\n", queue[0][0]);
+	printf("Path2 %s\n",queue[0][1]);
+	int source = open(queue[0][0], O_RDONLY, 0666);
 	if(source == -1){
 		perror("Erro na origem\n");
 		return 1;
 	}
 
-	int dest = open(commands[1], O_WRONLY|O_TRUNC|O_CREAT, 0666);
+	int dest = open(queue[0][1], O_WRONLY|O_TRUNC|O_CREAT, 0666);
 	if(dest == -1){
 		perror("Erro no destino\n");
 		return 1;
@@ -35,7 +48,7 @@ int execCommands(char **commands){
 			}
 
 			//execlp(strcat(commands[1]), strcat("./", commands[i]), commands[1], commands[2], NULL);
-			execlp("../SDStore-transf/bcompress", "../SDStore-transf/bcompress", "<enunciado.pdf>", "enunciado2", NULL);
+			//execlp("../SDStore-transf/bcompress", "../SDStore-transf/bcompress", "<enunciado.pdf>", "enunciado2", NULL);
 
 			_exit(0);
 		}
@@ -44,44 +57,49 @@ int execCommands(char **commands){
 	wait(NULL);
 	close(source);
 	close(dest);
+	printf("Concluded\n");
+	free(queue[0]);
+	queuesize-=1;
+	printf("%s\n",queue[0][0]);
+	//como altero a queue??? quero adiantar o pointer que estava em 1 para 0
+	//sendStatus("concluded\n");
 	return 0;
 }
 
 
-char** receiveRequest(){
+
+int receiveRequest(){
 	int cliente_servidor = open("cliente_servidor_fifo",O_RDONLY, 0666);
 	char buffer[1024];
 	read(cliente_servidor, buffer,sizeof(buffer));
 	close(cliente_servidor);
-	char **commands = malloc(sizeof(char)*1024);
+	//char **commands = malloc(sizeof(char)*1024);
 
 	if(strncmp(buffer, "proc-file", 9) == 0){
 		char input[1024];
 		strcpy(input, buffer);
-
 		char* token;
 		int i = 0;
 		char* rest = input;
+		queue[queuesize]=(char**)malloc(sizeof(char*)*1024);
 		while((token = strtok_r(rest, " \n", &rest))){
 			if(strncmp(token, "proc-file", 9) == 0 || strncmp(token, "./sdstore", 8) == 0){
 				continue;
 			}else{
-				commands[i] = malloc(sizeof(char)*1024);
-				commands[i] = strdup(token);
+				//commands[i] = malloc(sizeof(char)*1024);
+				//commands[i] = strdup(token);
+				queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+				queue[queuesize][i]=strdup(token);
 				i++;
 				size++;
 			}
 		}
+		queuesize+=1;
+		sendStatus("pending\n");
+		return 0;
 	}
 
-	return commands;
-}
-
-int sendStatus(char *status){
-	int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY,0666);
-	write(servidor_cliente,status,sizeof(status));
-	close(servidor_cliente);
-	return 0;
+	return 1;
 }
 
 
@@ -105,18 +123,18 @@ char** openConfigFile(char* argv[]){
 
 
 int main(int argc, char* argv[]){
+	queue = (char***)malloc(1024*sizeof(char**));
 
 	if(argc !=3){
 		fprintf(stderr, "USAGE: ./sdstore ...\n");
 		return 1;
 	}
 
-	char** config = openConfigFile(argv);
-
+	//char** config = openConfigFile(argv);
 	while(1){
-		char** commands =receiveRequest();
-		execCommands(commands);
-		sendStatus("done\n");
+		if(receiveRequest()==0){
+			execCommands();
+		}
 	}
 
 	return 0;

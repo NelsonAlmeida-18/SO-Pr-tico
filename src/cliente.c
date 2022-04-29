@@ -21,7 +21,7 @@ int receiveInfo(){
 	int bytesRead=read(servidor_cliente,buffer,sizeof(buffer));
 	write(1,buffer,bytesRead);
 	close(servidor_cliente);
-	return 0;
+	return bytesRead;
 }
 
 
@@ -34,8 +34,13 @@ int main(int argc, char* argv[]){
 
 
 	while(1){
-		makeRequest();
-		receiveInfo();
+		if(makeRequest()==0){
+			int flag = receiveInfo();
+			while(flag==0){
+				printf("Waiting info\n");
+				flag=receiveInfo();
+			}
+		}
 	}
 
 	return 0;
