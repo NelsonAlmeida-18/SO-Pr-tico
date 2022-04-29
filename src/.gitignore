@@ -1,3 +1,1 @@
-./src
-cliente.o
-servidor.o
+*.o
