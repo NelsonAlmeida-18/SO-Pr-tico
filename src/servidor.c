@@ -34,8 +34,14 @@ int execCommands(char **commands){
 				return 1;
 			}
 
-			//execlp(strcat(commands[1]), strcat("./", commands[i]), commands[1], commands[2], NULL);
-			execlp("../SDStore-transf/bcompress", "../SDStore-transf/bcompress", "<enunciado.pdf>", "enunciado2", NULL);
+			dup2(source, 0);
+			close(source);
+			
+			dup2(dest, 1);
+			close(dest);
+
+			execlp("../SDStore-transf/bcompress", "../SDStore-transf/bcompress", NULL);
+			perror("Erro na execução da funcionalidade\n");
 
 			_exit(0);
 		}
