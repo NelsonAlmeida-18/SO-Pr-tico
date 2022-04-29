@@ -15,14 +15,14 @@ char ***queue;
 int sendStatus(char *status){
 	int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY|O_TRUNC,0666);
 	write(servidor_cliente,status,sizeof(status));
-	close(servidor_cliente);
+	//close(servidor_cliente);
 	return 0;
 }
 
 
 
 int execCommands(){
-	//sendStatus("processing\n");
+	sendStatus("processing\n");
 	printf("Path1  %s\n", queue[0][0]);
 	printf("Path2 %s\n",queue[0][1]);
 	int source = open(queue[0][0], O_RDONLY, 0666);
@@ -57,7 +57,7 @@ int execCommands(){
 	wait(NULL);
 	close(source);
 	close(dest);
-	printf("Concluded\n");
+	sendStatus("Concluded\n");
 	free(queue[0]);
 	queuesize-=1;
 	printf("%s\n",queue[0][0]);
@@ -133,8 +133,11 @@ int main(int argc, char* argv[]){
 	//char** config = openConfigFile(argv);
 	while(1){
 		if(receiveRequest()==0){
-			execCommands();
+			while(execCommands()!=0){
+				
+			}
 		}
+		
 	}
 
 	return 0;

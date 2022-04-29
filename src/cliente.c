@@ -20,7 +20,7 @@ int receiveInfo(){
 	char buffer[1024];
 	int bytesRead=read(servidor_cliente,buffer,sizeof(buffer));
 	write(1,buffer,bytesRead);
-	close(servidor_cliente);
+	//close(servidor_cliente);
 	return bytesRead;
 }
 
@@ -35,10 +35,9 @@ int main(int argc, char* argv[]){
 
 	while(1){
 		if(makeRequest()==0){
-			int flag = receiveInfo();
-			while(flag==0){
-				printf("Waiting info\n");
-				flag=receiveInfo();
+			printf("Request made\n");
+			while(receiveInfo()==0){
+				printf("Waiting for server response\n");
 			}
 		}
 	}
