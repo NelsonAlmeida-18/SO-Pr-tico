@@ -8,7 +8,8 @@
 
 
 int makeRequest(int argc, char *argv[]){
-	int cliente_servidor = open("cliente_servidor_fifo", O_WRONLY|O_TRUNC, 0666);
+
+	int cliente_servidor = open("cliente_servidor_fifo", O_WRONLY, 0666);
 	char buffer[1024];
 	argv++;
 	int i = 1;
@@ -18,6 +19,7 @@ int makeRequest(int argc, char *argv[]){
 		i++;
 		argv++;
 	}
+	
 	write(cliente_servidor, buffer, sizeof(buffer));
 	close(cliente_servidor);
 	return 0;
@@ -27,7 +29,6 @@ int receiveInfo(){
 	int servidor_cliente=open("servidor_cliente_fifo",O_RDONLY,0666);
 	char buffer[1024];
 	int bytesRead;
-	printf("%s\n", buffer);
 	while((bytesRead=read(servidor_cliente,buffer,sizeof(buffer))>0)){
 		write(1,buffer,sizeof(buffer));
 	}
