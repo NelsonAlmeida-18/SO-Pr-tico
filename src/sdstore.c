@@ -12,14 +12,13 @@ int makeRequest(int argc, char *argv[]){
 	char buffer[1024];
 	argv++;
 	int i = 1;
-	while(i < argc){
-		strcat(buffer, argv[i]);
+	while(i < argc){ //-1 para ignorar o \n
+		strcat(buffer, *argv);
+		strcat(buffer, " ");
+		i++;
+		argv++;
 	}
-
-	printf("%s\n", buffer);
-
-	//bytesRead=read(**argv, buffer,sizeof(buffer));
-	write(cliente_servidor,buffer,sizeof(buffer));
+	write(cliente_servidor, buffer, sizeof(buffer));
 	close(cliente_servidor);
 	return 0;
 }
@@ -27,9 +26,14 @@ int makeRequest(int argc, char *argv[]){
 int receiveInfo(){
 	int servidor_cliente=open("servidor_cliente_fifo",O_RDONLY,0666);
 	char buffer[1024];
-	int bytesRead=read(servidor_cliente,buffer,sizeof(buffer));
-	write(1,buffer,bytesRead);
-	//close(servidor_cliente);
+	int bytesRead;
+	printf("%s\n", buffer);
+	while((bytesRead=read(servidor_cliente,buffer,sizeof(buffer))>0)){
+		write(1,buffer,sizeof(buffer));
+	}
+	if(strcmp(buffer,"Done")==0)
+		_exit(0);
+	close(servidor_cliente);
 	return bytesRead;
 }
 
@@ -43,12 +47,8 @@ int main(int argc, char* argv[]){
 
 
 	while(1){
-		if(makeRequest(argc, argv)==0){
-			printf("Request made\n");
-			while(receiveInfo()==0){
-				printf("Waiting for server response\n");
-			}
-		}
+		makeRequest(argc, argv);
+		receiveInfo();
 	}
 
 	return 0;

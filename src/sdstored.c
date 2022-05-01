@@ -10,7 +10,20 @@
 char* sdStoreDir="../SDStore-transf";
 int size = 0;
 
+int sendStatus(char *status){
+	int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY|O_TRUNC,0666);
+	printf("Status: %s\n",status);
+	write(servidor_cliente,status,sizeof(status));
+	//close(servidor_cliente);
+	return 0;
+}
+
 int execCommands(char **commands){
+
+	sendStatus("Processing\n");
+
+	printf("Path1: %s\n", commands[0]);
+	printf("Path2 %s\n", commands[1]);
 
 	int source = open(commands[0], O_RDONLY, 0666);
 	if(source == -1){
@@ -51,6 +64,7 @@ int execCommands(char **commands){
 		}
 	}
 
+	sendStatus("Done\n");
 	wait(NULL);
 	close(source);
 	close(dest);
@@ -64,7 +78,6 @@ char** receiveRequest(){
 	read(cliente_servidor, buffer,sizeof(buffer));
 	close(cliente_servidor);
 	char **commands = malloc(sizeof(char)*1024);
-
 	if(strncmp(buffer, "proc-file", 9) == 0){
 		char input[1024];
 		strcpy(input, buffer);
@@ -83,15 +96,8 @@ char** receiveRequest(){
 			}
 		}
 	}
-
+	sendStatus("Pending\n");
 	return commands;
-}
-
-int sendStatus(char *status){
-	int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY,0666);
-	write(servidor_cliente,status,sizeof(status));
-	close(servidor_cliente);
-	return 0;
 }
 
 
@@ -117,7 +123,7 @@ char** openConfigFile(char* argv[]){
 int main(int argc, char* argv[]){
 
 	if(argc !=3){
-		fprintf(stderr, "USAGE: ./sdstore ...\n");
+		perror("USAGE: ./sdstore ...\n");
 		return 1;
 	}
 
@@ -126,7 +132,6 @@ int main(int argc, char* argv[]){
 	while(1){
 		char** commands =receiveRequest();
 		execCommands(commands);
-		sendStatus("done\n");
 	}
 
 	return 0;
