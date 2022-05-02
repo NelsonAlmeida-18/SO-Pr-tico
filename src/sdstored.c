@@ -78,6 +78,17 @@ char** receiveRequest(){
 	close(cliente_servidor);
 	char **commands = malloc(sizeof(char)*1024);
 
+	int k = 0;
+	char str[10];
+	while(k < 10){
+		str[k] = buffer[k];
+		k++;
+	}
+
+	str[k] = '\0';
+	printf("%s\n", str);
+	printf("%d\n", strcmp(str, "proc-file"));
+
 	if(strncmp(buffer, "proc-file", 9) == 0){
 		char input[1024];
 		strcpy(input, buffer);
