@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 int receiveInfo(){
 	int servidor_cliente=open("servidor_cliente_fifo",O_RDONLY,0666);
@@ -54,6 +55,10 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 
+	if(mkfifo("servidor_cliente_fifo", 0666) == -1 && errno != EEXIST){
+		perror("servidor_cliente_fifo");
+		return 1;
+	}
 
 	makeRequest(argc, argv);
 

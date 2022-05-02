@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 
 char* sdStoreDir="../SDStore-transf";
@@ -124,9 +125,12 @@ int main(int argc, char* argv[]){
 		return 1;
 	}
 
+	if(mkfifo("cliente_servidor_fifo", 0666) == -1 && errno != EEXIST){
+		perror("cliente_servidor_fifo");
+		return 1;
+	}
+
 	char** config = openConfigFile(argv);
-	//int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY|O_TRUNC,0666);
-	//int cliente_servidor=open("cliente_servidor_fifo",O_RDONLY, 0666);
 
 	char string[1024];
 
@@ -136,7 +140,10 @@ int main(int argc, char* argv[]){
 		int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY|O_TRUNC,0666);
 		char buffer[1024];
 		read(cliente_servidor, buffer,sizeof(buffer));
+		close(cliente_servidor);
+
 		char **commands = malloc(sizeof(char)*1024);
+
 		if(strncmp(buffer, "proc-file", 9) == 0){
 			char input[1024];
 			strcpy(input, buffer);
@@ -158,13 +165,7 @@ int main(int argc, char* argv[]){
 		strcpy(string, "Processing\n");
 		write(servidor_cliente,string, strlen(string));
 
-
 		//ExecCommands
-		strcpy(string, "Processing\n");
-		write(servidor_cliente,string, strlen(string));
-
-		printf("Path1: %s\n", commands[0]);
-		printf("Path2 %s\n", commands[1]);
 
 		int source = open(commands[0], O_RDONLY, 0666);
 		if(source == -1){
@@ -207,11 +208,11 @@ int main(int argc, char* argv[]){
 
 		strcpy(string,"Done\n");
 		write(servidor_cliente, string, strlen(string));
+
 		wait(NULL);
 		close(source);
 		close(dest);
 		close(servidor_cliente);
-		close(cliente_servidor);
 	}
 
 	return 0;
