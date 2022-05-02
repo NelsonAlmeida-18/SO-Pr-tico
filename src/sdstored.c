@@ -14,13 +14,13 @@ int sendStatus(char *status){
 	int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY|O_TRUNC,0666);
 	printf("Status: %s\n",status);
 	write(servidor_cliente,status,sizeof(status));
-	//close(servidor_cliente);
+	close(servidor_cliente);
 	return 0;
 }
 
 int execCommands(char **commands){
 
-	sendStatus("Processing\n");
+	//sendStatus("Processing\n");
 
 	printf("Path1: %s\n", commands[0]);
 	printf("Path2 %s\n", commands[1]);
@@ -64,7 +64,7 @@ int execCommands(char **commands){
 		}
 	}
 
-	sendStatus("Done\n");
+	//sendStatus("Done\n");
 	wait(NULL);
 	close(source);
 	close(dest);
@@ -96,7 +96,7 @@ char** receiveRequest(){
 			}
 		}
 	}
-	sendStatus("Pending\n");
+	//sendStatus("Pending\n");
 	return commands;
 }
 
