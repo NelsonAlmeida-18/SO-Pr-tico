@@ -11,6 +11,7 @@ int size = 0;
 char ***queue;
 int queuesize = 0;
 int lastCommands = 0;
+int maxNop,maxBCompress, maxBDecompress, maxGCompress, maxGDecompress,maxEncrypt, maxDecrypt=0;
 
 char** openConfigFile(char* argv[]){
 	int configFile = open(argv[1], O_RDONLY, 0666);
@@ -25,6 +26,23 @@ char** openConfigFile(char* argv[]){
 	while((token = strtok_r(rest, " \n", &rest))){
 		config[i] = strdup(token);
 		i++;
+	}
+	int pos=1;
+
+	for(int j=0;j<i;j++){
+		if(strncmp(config[j],"bcompress",9)==0){
+			maxBCompress = atoi(config[pos]);
+		}
+		else if(strncmp(config[j],"bdecompress",11)==0){
+			maxBDecompress = atoi(config[pos]);
+		}
+		else if(strncmp(config[j],"nop",3)==0){
+			maxNop = atoi(config[pos]);
+		}
+		else if(strncmp(config[j],"bcompress",9)==0){
+			maxBCompress = atoi(config[pos]);
+		}
+		pos+=2;
 	}
 
 	return config;
@@ -123,7 +141,7 @@ int main(int argc, char* argv[]){
 				//int status;
 				int pipeline[1024][2];
 				
-				for(int i = 0; i < size; i++){
+				for(int i = 0; i < queuesize; i++){
 
 					int pos = 0;
 					while(queue[i][pos] != NULL){
@@ -192,8 +210,7 @@ int main(int argc, char* argv[]){
 
 					if(cont == pos-1){
 						if(fork() == 0){	
-
-							dup2(pipeline[j-1][0], 0);
+						    dup2(pipeline[j-1][0], 0);
 							close(pipeline[j-1][0]);
 							
 							dup2(dest, 1);
@@ -211,6 +228,7 @@ int main(int argc, char* argv[]){
 						close(pipeline[j-1][0]);
 						cont++;
 					}
+
 				}
 				lastCommands+=1;
 				strcpy(string,"Done\n");
