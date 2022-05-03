@@ -7,8 +7,6 @@
 #include <string.h>
 #include <errno.h>
 
-
-char* sdStoreDir="../SDStore-transf";
 int size = 0;
 char ***queue;
 int queuesize = 0;
@@ -48,6 +46,8 @@ int main(int argc, char* argv[]){
 	char** config = openConfigFile(argv);
 	char string[1024];
 	queue = (char***)malloc(1024*sizeof(char**));
+
+	char *funcDir = argv[2];
 
 	while(1){
 		int cliente_servidor = open("cliente_servidor_fifo",O_RDONLY, 0666);
@@ -123,27 +123,93 @@ int main(int argc, char* argv[]){
 				//int status;
 				int pipeline[1024][2];
 				
-				for(int i = 2; i < size; i++){
-					if(fork() == 0){
-						if(pipe(pipeline[i-2]) == -1){
+				for(int i = 0; i < size; i++){
+
+					int pos = 0;
+					while(queue[i][pos] != NULL){
+						pos++;
+					}
+
+					int cont = 2;
+					int j = 0;
+					if(pipe(pipeline[j]) == -1){
+							perror("Erro na criação do pipe\n");
+							return 1;
+					}
+
+					if(cont == 2){
+						if(fork() == 0){
+
+							dup2(source, 0);
+							close(source);
+
+							close(pipeline[j][0]);
+							dup2(pipeline[j][1], 1);
+							close(pipeline[j][1]);
+
+							char buffer[100];
+							strcpy(buffer, funcDir);
+							strcat(buffer, queue[i][cont]);
+
+							execlp(buffer, buffer, NULL);
+							perror("Erro na execução da primeira transformação\n");
+
+							_exit(0);
+						}
+						close(pipeline[j][1]);
+						cont++;
+						j++;
+					}
+
+					while(cont < pos-1){
+						if(pipe(pipeline[j]) == -1){
 							perror("Erro na criação do pipe\n");
 							return 1;
 						}
 
-						dup2(source, 0);
-						close(source);
-						
-						dup2(dest, 1);
-						close(dest);
+						if(fork() == 0){
+							dup2(pipeline[j-1][0], 0);
+							close(pipeline[j-1][0]);
 
-						char buffer[100];
-						strcpy(buffer, "../SDStore-transf/");
-						strcat(buffer, queue[0][i]);
+							close(pipeline[j][0]);
+							dup2(pipeline[j][1], 1);
+							close(pipeline[j][1]);
 
-						execlp(buffer, buffer, NULL);
-						perror("Erro na execução da funcionalidade\n");
+							char buffer[100];
+							strcpy(buffer, funcDir);
+							strcat(buffer, queue[i][cont]);
 
-						_exit(0);
+							execlp(buffer, buffer, NULL);
+							perror("Erro na execução nas transformações intermédias\n");
+
+							_exit(0);
+						}
+						close(pipeline[j][1]);
+						close(pipeline[j-1][0]);
+						cont++;
+						j++;
+					}
+
+					if(cont == pos-1){
+						if(fork() == 0){	
+
+							dup2(pipeline[j-1][0], 0);
+							close(pipeline[j-1][0]);
+							
+							dup2(dest, 1);
+							close(dest);
+
+							char buffer[100];
+							strcpy(buffer, funcDir);
+							strcat(buffer, queue[i][cont]);
+
+							execlp(buffer, buffer, NULL);
+							perror("Erro na execução da funcionalidade\n");
+
+							_exit(0);
+						}
+						close(pipeline[j-1][0]);
+						cont++;
 					}
 				}
 				lastCommands+=1;
