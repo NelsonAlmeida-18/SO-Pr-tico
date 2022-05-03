@@ -11,7 +11,7 @@ int size = 0;
 char ***queue;
 int queuesize = 0;
 int lastCommands = 0;
-int maxNop,maxBCompress, maxBDecompress, maxGCompress, maxGDecompress,maxEncrypt, maxDecrypt=0;
+int maxNop,maxBCompress, maxBDecompress, maxGCompress, maxGDecompress,maxEncrypt, maxDecrypt;
 
 char** openConfigFile(char* argv[]){
 	int configFile = open(argv[1], O_RDONLY, 0666);
@@ -27,9 +27,9 @@ char** openConfigFile(char* argv[]){
 		config[i] = strdup(token);
 		i++;
 	}
-	int pos=1;
 
 	for(int j=0;j<i;j++){
+		int pos = j+1;
 		if(strncmp(config[j],"bcompress",9)==0){
 			maxBCompress = atoi(config[pos]);
 		}
@@ -39,10 +39,18 @@ char** openConfigFile(char* argv[]){
 		else if(strncmp(config[j],"nop",3)==0){
 			maxNop = atoi(config[pos]);
 		}
-		else if(strncmp(config[j],"bcompress",9)==0){
-			maxBCompress = atoi(config[pos]);
+		else if(strncmp(config[j],"gcompress",9)==0){
+			maxGCompress = atoi(config[pos]);
 		}
-		pos+=2;
+		else if(strncmp(config[j],"gdecompress",11)==0){
+			maxGDecompress = atoi(config[pos]);
+		}
+		else if(strncmp(config[j],"encrypt",7)==0){
+			maxEncrypt = atoi(config[pos]);
+		}
+		else if(strncmp(config[j],"decrypt",7)==0){
+			maxDecrypt = atoi(config[pos]);
+		}
 	}
 
 	return config;
@@ -150,6 +158,7 @@ int main(int argc, char* argv[]){
 
 					int cont = 2;
 					int j = 0;
+
 					if(pipe(pipeline[j]) == -1){
 							perror("Erro na criação do pipe\n");
 							return 1;
@@ -231,7 +240,7 @@ int main(int argc, char* argv[]){
 
 				}
 				lastCommands+=1;
-				strcpy(string,"Done\n");
+				strcpy(string,"Concluded\n");
 				write(servidor_cliente, string, strlen(string));
 
 
