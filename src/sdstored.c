@@ -86,17 +86,42 @@ int main(int argc, char* argv[]){
 		if(strncmp(buffer, "status",6)==0){
 			if (queuesize>0){
 				char message[2048]="";
-				for(int i = lastCommands; i<queuesize; i++){
+				for(int i = 0; i<queuesize; i++){
 					int j=0;
 					char messageTemp[1024]="";
+					char task[1280] = "";
 					while(queue[i][j]){
 						strcat(messageTemp,queue[i][j]); 
 						strcat(messageTemp, " ");
 						j++;
 					}
-					sprintf(message, "Task #%d: %s\n", i, messageTemp);
-					write(servidor_cliente, message, strlen(message));
+					sprintf(task, "Task #%d: %s\n", i, messageTemp);
+					strcat(message, task);
 				}
+
+				char transf1[40] = "";
+				sprintf(transf1, "transf nop: %d/%d (running/max)\n", nop, maxNop);
+				char transf2[40] = "";
+				sprintf(transf2, "transf bcompress: %d/%d (running/max)\n", bcompress, maxBCompress);
+				char transf3[40] = "";
+				sprintf(transf3, "transf bdecompress: %d/%d (running/max)\n", bdecompress, maxBDecompress);
+				char transf4[40] = "";
+				sprintf(transf4, "transf gcompress: %d/%d (running/max)\n", gcompress, maxGCompress);
+				char transf5[40] = "";
+				sprintf(transf5, "transf gdecompress: %d/%d (running/max)\n", gcompress, maxGDecompress);
+				char transf6[40] = "";
+				sprintf(transf6, "transf encrypt: %d/%d (running/max)\n", encrypt, maxEncrypt);
+				char transf7[40] = "";
+				sprintf(transf7, "transf decrypt: %d/%d (running/max)\n", decrypt, maxDecrypt);
+
+				strcat(message, transf1);
+				strcat(message, transf2);
+				strcat(message, transf3);
+				strcat(message, transf4);
+				strcat(message, transf5);
+				strcat(message, transf6);
+				strcat(message, transf7);
+				write(servidor_cliente, message, strlen(message));
 			}
 			else{
 				char *message="No processes in queue\n";
@@ -176,6 +201,7 @@ int main(int argc, char* argv[]){
 					iters++;
 				}
 			}
+
 			queuesize+=1;
 			strcpy(string, "Pending\n");
 			write(servidor_cliente,string, strlen(string));
@@ -203,10 +229,25 @@ int main(int argc, char* argv[]){
 				//int status;
 				int pipeline[1024][2];
 				
-				for(int i = 0; i < queuesize; i++){
+				for(int i = lastCommands; i < queuesize; i++){
 
 					int pos = 0;
 					while(queue[i][pos] != NULL){
+						if(strncmp(queue[i][pos], "nop", 3) == 0){
+							nop--;
+						}else if(strncmp(queue[i][pos], "bcompress", 9) == 0){
+							bcompress--;
+						}else if(strncmp(queue[i][pos], "bdecompress", 11) == 0){
+							bdecompress--;
+						}else if(strncmp(queue[i][pos], "gcompress", 9) == 0){
+							gcompress--;
+						}else if(strncmp(queue[i][pos], "gdecompress", 11) == 0){
+							gdecompress--;
+						}else if(strncmp(queue[i][pos], "encrypt", 7) == 0){
+							encrypt--;
+						}else if(strncmp(queue[i][pos], "decrypt", 7) == 0){
+							decrypt--;
+						}
 						pos++;
 					}
 
