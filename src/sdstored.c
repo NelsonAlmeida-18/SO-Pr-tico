@@ -68,7 +68,7 @@ int main(int argc, char* argv[]){
 		perror("cliente_servidor_fifo");
 		return 1;
 	}
-
+	int bcompress,bdecompress,nop,encrypt,decrypt,gcompress,gdecompress=0;
 	char** config = openConfigFile(argv);
 	char string[1024];
 	queue = (char***)malloc(1024*sizeof(char**));
@@ -85,23 +85,24 @@ int main(int argc, char* argv[]){
 		//char **commands = malloc(sizeof(char)*1024);
 		if(strncmp(buffer, "status",6)==0){
 			if (queuesize>0){
-				char message[1024]="";
+				char message[2048]="";
 				for(int i = lastCommands; i<queuesize; i++){
 					int j=0;
 					char messageTemp[1024]="";
 					while(queue[i][j]){
-						strcat(messageTemp,queue[i][j]);
+						strcat(messageTemp,queue[i][j]); 
+						strcat(messageTemp, " ");
 						j++;
 					}
-					strcat(message,messageTemp);
+					sprintf(message, "Task #%d: %s\n", i, messageTemp);
+					write(servidor_cliente, message, strlen(message));
 				}
-				write(servidor_cliente, message, strlen(message));
-				close(servidor_cliente);
 			}
 			else{
 				char *message="No processes in queue\n";
 				write(servidor_cliente,message , strlen(message));
 			}
+			close(servidor_cliente);
 		}
 		if(strncmp(buffer, "proc-file", 9) == 0){
 			char input[1024];
@@ -110,16 +111,69 @@ int main(int argc, char* argv[]){
 			char* token;
 			int i = 0;
 			char* rest = input;
+			int iters=0;
 			queue[queuesize]=(char**)malloc(sizeof(char*)*1024);
 
 			while((token = strtok_r(rest, " \n", &rest))){
 				if(strncmp(token, "proc-file", 9) == 0 || strncmp(token, "./sdstore", 8) == 0){
 					continue;
 				}else{
-					queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
-					queue[queuesize][i]=strdup(token);
-					i++;
-					size++;
+					if(strncmp(token,"bcompress",9)==0 && bcompress<maxBCompress){
+						bcompress+=1;
+						queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+						queue[queuesize][i]=strdup(token);
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"bdecompress",11)==0 && bdecompress<maxBDecompress){
+						bdecompress+=1;
+						queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+						queue[queuesize][i]=strdup(token);
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"nop",3)==0 && nop<maxNop){
+						nop+=1;
+						queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+						queue[queuesize][i]=strdup(token);
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"gcompress",9)==0 && gcompress<maxGCompress){
+						gcompress+=1;
+						queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+						queue[queuesize][i]=strdup(token);
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"gdecompress",11)==0 && gdecompress<maxGDecompress){
+						gdecompress+=1;
+						queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+						queue[queuesize][i]=strdup(token);
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"encrypt",7)==0 && encrypt<maxEncrypt){
+						encrypt+=1;
+						queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+						queue[queuesize][i]=strdup(token);
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"decrypt",7)==0 && decrypt<maxDecrypt){
+						decrypt+=1;
+						queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+						queue[queuesize][i]=strdup(token);
+						i++;
+						size++;
+					}
+					else if(iters==0 || iters==1){
+						queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
+						queue[queuesize][i]=strdup(token);
+						i++;
+						size++;
+					}
+					iters++;
 				}
 			}
 			queuesize+=1;
@@ -242,12 +296,10 @@ int main(int argc, char* argv[]){
 				lastCommands+=1;
 				strcpy(string,"Concluded\n");
 				write(servidor_cliente, string, strlen(string));
-
+				close(servidor_cliente);
+				printf("here");
 
 				wait(NULL);
-				close(source);
-				close(dest);
-				close(servidor_cliente);
 			}
 		}
 	}

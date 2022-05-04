@@ -24,7 +24,7 @@ int makeRequest(int argc, char *argv[]){
 
 	char string[1024];
 	int bytesRead = 0;
-	int server_client_fifo = open("servidor_cliente_fifo", O_RDONLY);
+	int server_client_fifo = open("servidor_cliente_fifo", O_RDONLY,0666);
 	while((bytesRead = read(server_client_fifo, string, 1024)) > 0)
 		write(1, string, bytesRead);
 	close(server_client_fifo);
