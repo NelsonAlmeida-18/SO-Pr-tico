@@ -338,7 +338,6 @@ int main(int argc, char* argv[]){
 				strcpy(string,"Concluded\n");
 				write(servidor_cliente, string, strlen(string));
 				close(servidor_cliente);
-				printf("here");
 
 				wait(NULL);
 			}
