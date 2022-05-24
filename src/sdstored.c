@@ -7,11 +7,12 @@
 #include <string.h>
 #include <errno.h>
 
+
 int size = 0;
 char ***queue;
 int queuesize = 0;
 int lastCommands = 0;
-int maxNop,maxBCompress, maxBDecompress, maxGCompress, maxGDecompress,maxEncrypt, maxDecrypt;
+
 
 typedef struct commands{
 	int nop;
@@ -20,11 +21,20 @@ typedef struct commands{
 	int gcompress;
 	int gdecompress;
 	int encrypt;
-	int decrypt;	
+	int decrypt;
+	int maxnop;
+	int maxbcompress;
+	int maxbdecompress;
+	int maxgcompress;
+	int maxgdecompress;
+	int maxencrypt;
+	int maxdecrypt;	
 } Commands;
 
 typedef struct request{
-	char** comando;
+	char* comando;
+	char* source;
+	char* destination;
 	int nop;
 	int bcompress;
 	int bdecompress;
@@ -32,9 +42,11 @@ typedef struct request{
 	int gdecompress;
 	int encrypt;
 	int decrypt;
+	int totalCommands;
+	struct request *next;
 } Request;
 
-char** openConfigFile(char* argv[]){
+char** openConfigFile(char* argv[], Commands commands){
 	int configFile = open(argv[1], O_RDONLY, 0666);
 	char buffer[1024];
 	read(configFile, buffer, sizeof(buffer));
@@ -79,7 +91,6 @@ char** openConfigFile(char* argv[]){
 
 
 int main(int argc, char* argv[]){
-
 	if(argc !=3){
 		perror("USAGE: ./sdstore ...\n");
 		return 1;
@@ -89,13 +100,30 @@ int main(int argc, char* argv[]){
 		perror("cliente_servidor_fifo");
 		return 1;
 	}
-	char** config = openConfigFile(argv);
+	//DEPOIS TORNAR FUNÇAO VOID
+	Request *cabeca=NULL;
+	Commands commands;
+	commands.nop=0;
+	commands.bcompress=0;
+	commands.bdecompress=0;
+	commands.gcompress=0;
+	commands.gdecompress=0;
+	commands.encrypt=0;
+	commands.decrypt=0;
+	commands.maxnop=0;
+	commands.maxbcompress=0;
+	commands.maxbdecompress=0;
+	commands.maxgcompress=0;
+	commands.maxgdecompress=0;
+	commands.maxencrypt=0;
+	commands.maxdecrypt=0;
+	char** config = openConfigFile(argv,commands);
 	char string[1024];
-	queue = (char***)malloc(1024*sizeof(char**));
-
+	//queue = (char***)malloc(1024*sizeof(char**));
 	char *funcDir = argv[2];
 
 	while(1){
+		char *debug = "Here";
 		int cliente_servidor = open("cliente_servidor_fifo",O_RDONLY, 0666);
 		int servidor_cliente=open("servidor_cliente_fifo",O_WRONLY|O_TRUNC,0666);
 		char buffer[1024];
@@ -157,73 +185,101 @@ int main(int argc, char* argv[]){
 				char* token;
 				int i = 0;
 				char* rest = input;
-				int iters=0;
-				queue[queuesize]=(char**)malloc(sizeof(char*)*1024);
+				Request* requests = cabeca;
+				requests = (Request*) malloc(sizeof(Request));
+
+				requests->comando = malloc(1024*sizeof(char));
+				requests->source=malloc(1024*sizeof(char));
+				requests->destination=malloc(1024*sizeof(char));
+				requests->nop=0;
+				requests->bcompress=0;
+				requests->bdecompress=0;
+				requests->gcompress=0;
+				requests->gdecompress=0;
+				requests->encrypt=0;
+				requests->decrypt=0;
+				requests->totalCommands=0;
+				int iter=0;
+				while(requests->next !=NULL)
+						requests=requests->next;
+
+				requests->next = (Request*) malloc(sizeof(Request));
+				requests = requests->next;
 
 				while((token = strtok_r(rest, " \n", &rest))){
+					write(1,token,strlen(token));
 					if(strncmp(token, "proc-file", 9) == 0 || strncmp(token, "./sdstore", 8) == 0){
 						continue;
 					}else{
 						if(strncmp(token,"bcompress",9)==0){
-							request.bcompress+=1;
-							request.comando[i]=(char*)malloc(sizeof(char)*1024);
-							request.comando[i]=strdup(token);
+							requests->comando=strcat(requests->comando, token);
+							requests->comando=strcat(requests->comando, " ");
+							requests->bcompress+=1;
+							requests->totalCommands+=1;
 							i++;
 							size++;
 						}
 						else if(strncmp(token,"bdecompress",11)==0){
-							request.bdecompress+=1;
-							queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
-							queue[queuesize][i]=strdup(token);
+							requests->comando=strcat(requests->comando, token);
+							requests->comando=strcat(requests->comando, " ");
+							requests->bdecompress+=1;
+							requests->totalCommands+=1;
 							i++;
 							size++;
 						}
 						else if(strncmp(token,"nop",3)==0 ){
-							request.nop+=1;
-							queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
-							queue[queuesize][i]=strdup(token);
+							requests->comando=strcat(requests->comando, token);
+							requests->comando=strcat(requests->comando, " ");
+							requests->nop+=1;
+							requests->totalCommands+=1;
 							i++;
 							size++;
 						}
 						else if(strncmp(token,"gcompress",9)==0 ){
-							request.gcompress+=1;
-							queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
-							queue[queuesize][i]=strdup(token);
+							requests->comando=strcat(requests->comando, token);
+							requests->comando=strcat(requests->comando, " ");
+							requests->gcompress+=1;
+							requests->totalCommands+=1;
 							i++;
 							size++;
 						}
 						else if(strncmp(token,"gdecompress",11)==0 ){
-							request.gdecompress+=1;
-							queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
-							queue[queuesize][i]=strdup(token);
+							requests->comando=strcat(requests->comando, token);
+							requests->comando=strcat(requests->comando, " ");
+							requests->gdecompress+=1;
+							requests->totalCommands+=1;
 							i++;
 							size++;
 						}
 						else if(strncmp(token,"encrypt",7)==0 ){
-							request.encrypt+=1;
-							queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
-							queue[queuesize][i]=strdup(token);
+							requests->comando=strcat(requests->comando, token);
+							requests->comando=strcat(requests->comando, " ");				
+							requests->encrypt+=1;
+							requests->totalCommands+=1;
 							i++;
 							size++;
 						}
 						else if(strncmp(token,"decrypt",7)==0){
-							request.decrypt+=1;
-							queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
-							queue[queuesize][i]=strdup(token);
+							requests->comando=strcat(requests->comando, token);
+							requests->comando=strcat(requests->comando, " ");
+							requests->decrypt+=1;
+							requests->totalCommands+=1;
 							i++;
 							size++;
 						}
-						else if(iters==0 || iters==1){
-							queue[queuesize][i]=(char*)malloc(sizeof(char)*1024);
-							queue[queuesize][i]=strdup(token);
-							i++;
-							size++;
+						if(iter==0){
+							requests->source=strcat(requests->source,token);
 						}
-						iters++;
+						if (iter==1){
+							requests->destination=strcat(requests->destination, token);
+						}
+						iter+=1;
 					}
 				}
 
+				requests -> next = NULL;
 				queuesize+=1;
+				write(1,requests->comando, strlen(requests->comando));
 				strcpy(string, "Pending\n");
 				write(servidor_cliente,string, strlen(string));
 
@@ -235,13 +291,13 @@ int main(int argc, char* argv[]){
 					write(servidor_cliente,string, strlen(string));
 
 
-					int source = open(queue[0][0], O_RDONLY, 0666);
+					int source = open(cabeca->source, O_RDONLY, 0666);
 					if(source == -1){
 						perror("Erro na origem\n");
 						return 1;
 					}
 
-					int dest = open(queue[0][1], O_WRONLY|O_TRUNC|O_CREAT, 0666);
+					int dest = open(cabeca->destination, O_WRONLY|O_TRUNC|O_CREAT, 0666);
 					if(dest == -1){
 						perror("Erro no destino\n");
 						return 1;
@@ -250,37 +306,36 @@ int main(int argc, char* argv[]){
 					//int status;
 					int pipeline[1024][2];
 					
-					for(int i = lastCommands; i < queuesize; i++){
-
+					for(int i = 0; i < queuesize; i++){
+						/*  REFAZER
 						int pos = 0;
 						while(queue[i][pos] != NULL){
-							if(strncmp(queue[i][pos], "nop", 3) == 0){
-								nop--;
+							if(strncmp(cab, "nop", 3) == 0){
+								commands.nop--;
 							}else if(strncmp(queue[i][pos], "bcompress", 9) == 0){
-								bcompress--;
+								commands.bcompress--;
 							}else if(strncmp(queue[i][pos], "bdecompress", 11) == 0){
-								bdecompress--;
+								commands.bdecompress--;
 							}else if(strncmp(queue[i][pos], "gcompress", 9) == 0){
-								gcompress--;
+								commands.gcompress--;
 							}else if(strncmp(queue[i][pos], "gdecompress", 11) == 0){
-								gdecompress--;
+								commands.gdecompress--;
 							}else if(strncmp(queue[i][pos], "encrypt", 7) == 0){
-								encrypt--;
+								commands.encrypt--;
 							}else if(strncmp(queue[i][pos], "decrypt", 7) == 0){
-								decrypt--;
+								commands.decrypt--;
 							}
 							pos++;
 						}
-
-						int cont = 2;
+						*/
 						int j = 0;
 
 						if(pipe(pipeline[j]) == -1){
 								perror("Erro na criação do pipe\n");
 								return 1;
 						}
-
-						if(cont == 2){
+						/*
+						if(cabeca->totalCommands==1){
 							if(fork() == 0){
 
 								dup2(source, 0);
@@ -303,7 +358,97 @@ int main(int argc, char* argv[]){
 							cont++;
 							j++;
 						}
+						*/
 
+						if(cabeca->totalCommands==1){
+							if(fork() == 0){
+								dup2(source, 0);
+								close(source);
+
+								dup2(dest, 1);
+								close(dest);
+
+								char buffer[100];
+								strcpy(buffer, funcDir);
+								strcat(buffer, cabeca->comando);
+
+								execlp(buffer, buffer, NULL);
+								perror("Erro na execução da primeira transformação\n");
+
+								_exit(0);
+							}
+							close(pipeline[j][1]);
+							close(pipeline[j][0]);
+							j++;
+						}
+						else{
+							int cont=1;
+							char* commandSplit = cabeca->comando;
+							while((token=strtok_r(commandSplit, " ", &commandSplit))){
+								if(cont == 1){
+									if(fork() == 0){
+										dup2(source, 0);
+										close(source);
+
+										dup2(pipeline[j][1], 1);
+										close(pipeline[j][1]);
+
+										char buffer[100];
+										strcpy(buffer,funcDir);
+										strcat(buffer, token);
+
+										execlp(buffer, buffer, NULL);
+										perror("Erro na execução da transformação inicial\n");
+
+										_exit(0);
+									}
+									close(pipeline[j][1]);
+								}
+								else if(cont<cabeca->totalCommands){
+									if(fork() == 0){
+										dup2(pipeline[j-1][0], 0);
+										close(pipeline[j-1][0]);
+
+										close(pipeline[j][0]);
+										dup2(pipeline[j][1], 1);
+										close(pipeline[j][1]);
+
+										char buffer[100];
+										strcpy(buffer, funcDir);
+										strcat(buffer, token);
+
+										execlp(buffer, buffer, NULL);
+										perror("Erro na execução nas transformações intermédias\n");
+
+										_exit(0);
+									}
+									close(pipeline[j-1][0]);
+									close(pipeline[j][1]);
+								}
+								else{
+									if(fork() == 0){	
+									    dup2(pipeline[j-1][0], 0);
+										close(pipeline[j-1][0]);
+										
+										dup2(dest, 1);
+										close(dest);
+
+										char buffer[100];
+										strcpy(buffer, funcDir);
+										strcat(buffer, token);
+
+										execlp(buffer, buffer, NULL);
+										perror("Erro na execução da funcionalidade\n");
+
+										_exit(0);
+									}
+									close(pipeline[j-1][0]);
+								}
+								cont+=1;
+								j++;
+							}
+						}
+					/*
 						while(cont < pos-1){
 							if(pipe(pipeline[j]) == -1){
 								perror("Erro na criação do pipe\n");
@@ -353,6 +498,8 @@ int main(int argc, char* argv[]){
 							close(pipeline[j-1][0]);
 							cont++;
 						}
+					*/
+
 
 					}
 					lastCommands+=1;
