@@ -33,6 +33,10 @@ int makeRequest(int argc, char *argv[]){
 	char nomeDoFifo[1024] = "server_client_fifo_";
 	char* pidCliente = itoa(pid, 10);
 	strcat(nomeDoFifo, pidCliente);
+	if((mkfifo(nomeDoFifo, 0666) == -1) && errno != EEXIST){
+		perror("Erro na criação do fifo\n");
+		_exit(1);
+	}
 
 	while(i < argc){ //-1 para ignorar o \n
 		strcat(buffer, *argv);
@@ -50,15 +54,12 @@ int makeRequest(int argc, char *argv[]){
 	char string[1024];
 	int bytesRead = 0;
 
-	if(mkfifo(nomeDoFifo,0666)==-1){
-		perror("Error opening fifo");
-		return -1;
-	}
-
 	int server_client_fifo = open(nomeDoFifo, O_RDONLY,0666);
-	while((bytesRead = read(server_client_fifo, string, 1024)) > 0)
+	while((bytesRead = read(server_client_fifo, string, 1024)) > 0){
 		write(1, string, bytesRead);
+	}
 	close(server_client_fifo);
+	unlink(nomeDoFifo);
 	return 0;
 }
 

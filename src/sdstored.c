@@ -158,13 +158,14 @@ int main(int argc, char* argv[]){
 			}
 			strcat(nameOfFifo, pid);
 
-			while((mkfifo(nameOfFifo, 0666)==-1) && errno != EEXIST){
-				unlink(nameOfFifo);
-			}
+			/*if((mkfifo(nameOfFifo, 0666) == -1) && errno != EEXIST){
+				perror("Erro na criação do fifo\n");
+				_exit(1);
+			}*/
 
 			if (queuesize>0){
 				char message[2048]="";
-				for(int i = 0; i<queuesize; i++){
+				for(int i = lastCommands; i<queuesize; i++){
 					char messageTemp[1024]="";
 					char task[1280] = "";
 					strcat(messageTemp,pedidos[i].comando); 
@@ -195,20 +196,22 @@ int main(int argc, char* argv[]){
 				strcat(message, transf5);
 				strcat(message, transf6);
 				strcat(message, transf7);
-				servidor_cliente = open(nameOfFifo,O_WRONLY|O_TRUNC, 0666);
+
 				write(servidor_cliente, message, strlen(message));
 				close(servidor_cliente);
 				unlink(nameOfFifo);
 			}
 			else{
 				char *message="No processes in queue\n";
-				servidor_cliente = open(nameOfFifo,O_WRONLY|O_TRUNC, 0666);
+				if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
+					perror("Erro na abertura do fifo\n");
+					_exit(1);
+				}
 				write(servidor_cliente,message , strlen(message));
 				close(servidor_cliente);
-				unlink(nameOfFifo);
 			}
 		}
-		if(strncmp(buffer, "proc-file", 9) == 0){
+		else if(strncmp(buffer, "proc-file", 9) == 0){
 			if(fork()==0){
 				char input[1024];
 				strcpy(input, buffer);
@@ -311,17 +314,19 @@ int main(int argc, char* argv[]){
 				strcat(nameOfFifo,requests.pidCliente);
 
 
-				if((mkfifo(nameOfFifo, 0666)==-1) || errno == EEXIST){
-					unlink(nameOfFifo);
+				/*if((mkfifo(nameOfFifo, 0666)==-1) && errno != EEXIST){
+					perror("Erro na criação do fifo\n");
+					_exit(1);
+				}*/
+
+				if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
+					perror("Erro na abertura do fifo\n");
+					_exit(1);
 				}
-
-				servidor_cliente = open(nameOfFifo,O_WRONLY|O_TRUNC, 0666);
-
 
 				if(requests.nop>commands.maxnop || requests.bcompress>commands.maxbcompress || requests.bdecompress>commands.maxbdecompress || requests.encrypt>commands.maxencrypt || requests.decrypt>commands.maxdecrypt || requests.gcompress>commands.maxgcompress || requests.gdecompress>commands.maxgdecompress){
 					strcpy(string, "Too many commands, couldn't execute transformations.\n");
 					write(servidor_cliente, string, strlen(string));
-					unlink(nameOfFifo);
 					_exit(0);
 				}
 				pedidos[queuesize]=requests;
@@ -377,7 +382,14 @@ int main(int argc, char* argv[]){
 
 					char nameOfFifo[1024] = "server_client_fifo_";
 					strcat(nameOfFifo,cabeca.pidCliente);
-					servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666);
+					/*if((mkfifo(nameOfFifo, 0666) == -1) && errno != EEXIST){
+						perror("Erro na criação do fifo\n");
+						_exit(1);
+					}*/
+					if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
+						perror("Erro na abertura do fifo\n");
+						_exit(1);
+					}
 					strcpy(string, "Processing\n");
 					write(servidor_cliente,string, strlen(string));
 					close(servidor_cliente);
@@ -476,12 +488,20 @@ int main(int argc, char* argv[]){
 						}
 
 						lastCommands+=1;
-						strcpy(string,"Concluded\n");
-						servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666);
-						write(servidor_cliente, string, strlen(string));
-						unlink(nameOfFifo);
+						//strcpy(string,"Concluded\n");
+						//servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666);
+						//write(servidor_cliente, string, strlen(string));
+						//unlink(nameOfFifo);
 						//wait(NULL);
 					}
+
+					strcpy(string,"Concluded\n");
+					if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
+						perror("Erro na abertura do fifo\n");
+						_exit(1);
+					}
+					write(servidor_cliente, string, strlen(string));
+					close(servidor_cliente);
 
 					commands.nop -= cabeca.nop;
 					commands.bcompress -= cabeca.bcompress;
@@ -491,8 +511,6 @@ int main(int argc, char* argv[]){
 					commands.encrypt -= cabeca.encrypt;
 					commands.decrypt -= cabeca.decrypt;
 
-					close(servidor_cliente);
-					unlink(nameOfFifo);
 					_exit(0);
 				}
 			}
