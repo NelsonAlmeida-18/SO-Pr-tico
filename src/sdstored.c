@@ -47,7 +47,7 @@ typedef struct request{
 
 } Request;
 
-char** openConfigFile(char* argv[], Commands commands){
+void openConfigFile(char* argv[], Commands *commands){
 	int configFile = open(argv[1], O_RDONLY, 0666);
 	char buffer[1024];
 	read(configFile, buffer, sizeof(buffer));
@@ -65,29 +65,43 @@ char** openConfigFile(char* argv[], Commands commands){
 	for(int j=0;j<i;j++){
 		int pos = j+1;
 		if(strncmp(config[j],"bcompress",9)==0){
-			commands.maxbcompress = atoi(config[pos]);
+			commands->maxbcompress = atoi(config[pos]);
 		}
 		else if(strncmp(config[j],"bdecompress",11)==0){
-			commands.maxbdecompress = atoi(config[pos]);
+			commands->maxbdecompress = atoi(config[pos]);
 		}
 		else if(strncmp(config[j],"nop",3)==0){
-			commands.maxnop = atoi(config[pos]);
+			commands->maxnop = atoi(config[pos]);
 		}
 		else if(strncmp(config[j],"gcompress",9)==0){
-			commands.maxgcompress = atoi(config[pos]);
+			commands->maxgcompress = atoi(config[pos]);
 		}
 		else if(strncmp(config[j],"gdecompress",11)==0){
-			commands.maxgdecompress = atoi(config[pos]);
+			commands->maxgdecompress = atoi(config[pos]);
 		}
 		else if(strncmp(config[j],"encrypt",7)==0){
-			commands.maxencrypt = atoi(config[pos]);
+			commands->maxencrypt = atoi(config[pos]);
 		}
 		else if(strncmp(config[j],"decrypt",7)==0){
-			commands.maxdecrypt = atoi(config[pos]);
+			commands->maxdecrypt = atoi(config[pos]);
 		}
 	}
+}
 
-	return config;
+
+void swap(Request *x, Request *y){
+	Request temp = *x;
+	*x = *y;
+	*y = temp;
+}
+
+void replaceCommands(Request pedidos[], int lastCommands){
+	
+	int i = lastCommands;
+	while(pedidos[i+1].totalCommands != 0){
+		swap(&pedidos[i], &pedidos[i+1]);
+		i++;
+	}
 }
 
 
@@ -118,7 +132,7 @@ int main(int argc, char* argv[]){
 	commands.maxgdecompress=0;
 	commands.maxencrypt=0;
 	commands.maxdecrypt=0;
-	char** config = openConfigFile(argv,commands);
+	openConfigFile(argv,&commands);
 	char string[1024];
 	int queuesize=0;
 	int lastCommands=0;
@@ -148,10 +162,7 @@ int main(int argc, char* argv[]){
 				unlink(nameOfFifo);
 			}
 
-			servidor_cliente = open(nameOfFifo,O_WRONLY|O_TRUNC, 0666);
-
 			if (queuesize>0){
-				printf("Here");
 				char message[2048]="";
 				for(int i = 0; i<queuesize; i++){
 					char messageTemp[1024]="";
@@ -184,12 +195,14 @@ int main(int argc, char* argv[]){
 				strcat(message, transf5);
 				strcat(message, transf6);
 				strcat(message, transf7);
+				servidor_cliente = open(nameOfFifo,O_WRONLY|O_TRUNC, 0666);
 				write(servidor_cliente, message, strlen(message));
 				close(servidor_cliente);
 				unlink(nameOfFifo);
 			}
 			else{
 				char *message="No processes in queue\n";
+				servidor_cliente = open(nameOfFifo,O_WRONLY|O_TRUNC, 0666);
 				write(servidor_cliente,message , strlen(message));
 				close(servidor_cliente);
 				unlink(nameOfFifo);
@@ -293,32 +306,36 @@ int main(int argc, char* argv[]){
 						iter+=1;
 					}
 				}
-				pedidos[queuesize]=requests;
-				queuesize+=1;
 
 				char nameOfFifo[1024] = "server_client_fifo_";
 				strcat(nameOfFifo,requests.pidCliente);
 
-				while((mkfifo(nameOfFifo, 0666)==-1) && errno != EEXIST){
+
+				if((mkfifo(nameOfFifo, 0666)==-1) || errno == EEXIST){
 					unlink(nameOfFifo);
 				}
 
 				servidor_cliente = open(nameOfFifo,O_WRONLY|O_TRUNC, 0666);
+
+
+				if(requests.nop>commands.maxnop || requests.bcompress>commands.maxbcompress || requests.bdecompress>commands.maxbdecompress || requests.encrypt>commands.maxencrypt || requests.decrypt>commands.maxdecrypt || requests.gcompress>commands.maxgcompress || requests.gdecompress>commands.maxgdecompress){
+					strcpy(string, "Too many commands, couldn't execute transformations.\n");
+					write(servidor_cliente, string, strlen(string));
+					unlink(nameOfFifo);
+					_exit(0);
+				}
+				pedidos[queuesize]=requests;
+				queuesize+=1;
+
 				strcpy(string, "Pending\n");
 				write(servidor_cliente,string, strlen(string));
-				//close(servidor_cliente);
+				close(servidor_cliente);
 			}
 				//ExecCommands
 		
 			if (queuesize>0){
 				if (fork()==0){
 					Request cabeca = pedidos[lastCommands];
-					char nameOfFifo[1024] = "server_client_fifo_";
-					strcat(nameOfFifo,cabeca.pidCliente);
-
-					//servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666);
-					strcpy(string, "Processing\n");
-					write(servidor_cliente,string, strlen(string));
 
 					int source = open(cabeca.source, O_RDONLY, 0666);
 					if(source == -1){
@@ -333,30 +350,40 @@ int main(int argc, char* argv[]){
 					}
 					//int status;
 					int pipeline[1024][2];
-						
-					/*  REFAZER
-					int pos = 0;
-					while(queue[i][pos] != NULL){
-						if(strncmp(cab, "nop", 3) == 0){
-							commands.nop--;
-						}else if(strncmp(queue[i][pos], "bcompress", 9) == 0){
-							commands.bcompress--;
-						}else if(strncmp(queue[i][pos], "bdecompress", 11) == 0){
-							commands.bdecompress--;
-						}else if(strncmp(queue[i][pos], "gcompress", 9) == 0){
-							commands.gcompress--;
-						}else if(strncmp(queue[i][pos], "gdecompress", 11) == 0){
-							commands.gdecompress--;
-						}else if(strncmp(queue[i][pos], "encrypt", 7) == 0){
-							commands.encrypt--;
-						}else if(strncmp(queue[i][pos], "decrypt", 7) == 0){
-							commands.decrypt--;
+					int flag = 0;
+
+					while(flag == 0){
+						if(commands.nop+cabeca.nop <= commands.maxnop && 
+							commands.bcompress+cabeca.bcompress <= commands.maxbcompress && 
+							commands.bdecompress+cabeca.bdecompress <= commands.maxbdecompress && 
+							commands.gcompress+cabeca.gcompress <= commands.maxgcompress && 
+							commands.gdecompress+cabeca.gdecompress <= commands.maxgdecompress && 
+							commands.encrypt+cabeca.encrypt <= commands.maxencrypt && 
+							commands.decrypt+cabeca.decrypt <= commands.maxdecrypt){
+
+							commands.nop += cabeca.nop;
+							commands.bcompress += cabeca.bcompress;
+							commands.bdecompress += cabeca.bdecompress;
+							commands.gcompress += cabeca.gcompress;
+							commands.gdecompress += cabeca.gdecompress;
+							commands.encrypt += cabeca.encrypt;
+							commands.decrypt += cabeca.decrypt;
+							flag = 1;
+						}else{
+							replaceCommands(pedidos, lastCommands);
+							cabeca = pedidos[lastCommands];
 						}
-						pos++;
 					}
-					*/
+
+					char nameOfFifo[1024] = "server_client_fifo_";
+					strcat(nameOfFifo,cabeca.pidCliente);
+					servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666);
+					strcpy(string, "Processing\n");
+					write(servidor_cliente,string, strlen(string));
+					close(servidor_cliente);
 
 					if(cabeca.totalCommands==1){
+
 						if(fork() == 0){
 							dup2(source, 0);
 							close(source);
@@ -447,19 +474,28 @@ int main(int argc, char* argv[]){
 							cont+=1;
 							i++;
 						}
-		
+
 						lastCommands+=1;
 						strcpy(string,"Concluded\n");
+						servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666);
 						write(servidor_cliente, string, strlen(string));
+						unlink(nameOfFifo);
 						//wait(NULL);
 					}
+
+					commands.nop -= cabeca.nop;
+					commands.bcompress -= cabeca.bcompress;
+					commands.bdecompress -= cabeca.bdecompress;
+					commands.gcompress -= cabeca.gcompress;
+					commands.gdecompress -= cabeca.gdecompress;
+					commands.encrypt -= cabeca.encrypt;
+					commands.decrypt -= cabeca.decrypt;
+
 					close(servidor_cliente);
 					unlink(nameOfFifo);
 					_exit(0);
 				}
 			}
-			close(servidor_cliente);
-			
 		}
 	}
 
