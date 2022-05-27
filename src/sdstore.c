@@ -22,8 +22,12 @@ char* itoa(int val, int base){
 }
 
 
-int makeRequest(int argc, char *argv[]){
+void makeRequest(int argc, char *argv[]){
 	int cliente_servidor = open("cliente_servidor_fifo", O_WRONLY|O_TRUNC, 0666);
+	if(cliente_servidor == -1){
+		perror("Erro na abertura do fifo cliente_servidor (no cliente)\n");
+		_exit(1);
+	}
 	char buffer[1024];
 	argv++;
 	int i = 1;
@@ -55,12 +59,18 @@ int makeRequest(int argc, char *argv[]){
 	int bytesRead = 0;
 
 	int server_client_fifo = open(nomeDoFifo, O_RDONLY,0666);
+	if(server_client_fifo == -1){
+		perror("Erro na abertura do fifo server_client (no cliente)\n");
+		_exit(1);
+	}
+	
 	while((bytesRead = read(server_client_fifo, string, 1024)) > 0){
 		write(1, string, bytesRead);
 	}
 	close(server_client_fifo);
 	unlink(nomeDoFifo);
-	return 0;
+
+	_exit(0);
 }
 
 

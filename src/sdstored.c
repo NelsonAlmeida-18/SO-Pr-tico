@@ -136,6 +136,7 @@ int main(int argc, char* argv[]){
 	char string[1024];
 	int queuesize=0;
 	int lastCommands=0;
+	int index = 0;
 	char *funcDir = argv[2];
 
 	while(1){
@@ -162,10 +163,14 @@ int main(int argc, char* argv[]){
 				perror("Erro na criação do fifo\n");
 				_exit(1);
 			}*/
+			if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
+				perror("Erro na abertura do fifo que envia o status (1º)\n");
+				_exit(1);
+			}
 
 			if (queuesize>0){
 				char message[2048]="";
-				for(int i = lastCommands; i<queuesize; i++){
+				for(int i = index; i<queuesize; i++){
 					char messageTemp[1024]="";
 					char task[1280] = "";
 					strcat(messageTemp,pedidos[i].comando); 
@@ -198,144 +203,133 @@ int main(int argc, char* argv[]){
 				strcat(message, transf7);
 
 				write(servidor_cliente, message, strlen(message));
-				close(servidor_cliente);
-				unlink(nameOfFifo);
+				//close(servidor_cliente);
+				//unlink(nameOfFifo);
 			}
 			else{
 				char *message="No processes in queue\n";
-				if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
-					perror("Erro na abertura do fifo\n");
-					_exit(1);
-				}
 				write(servidor_cliente,message , strlen(message));
-				close(servidor_cliente);
 			}
+			close(servidor_cliente);
 		}
 		else if(strncmp(buffer, "proc-file", 9) == 0){
-			if(fork()==0){
-				char input[1024];
-				strcpy(input, buffer);
+			char input[1024];
+			strcpy(input, buffer);
 
-				char* token;
-				int i = 0;
-				char* rest = input;
-				Request requests;
+			char* token;
+			int i = 0;
+			char* rest = input;
+			Request requests;
 
-				requests.comando = malloc(1024*sizeof(char));
-				requests.source=malloc(1024*sizeof(char));
-				requests.destination=malloc(1024*sizeof(char));
-				requests.pidCliente=malloc(1024*sizeof(char));
-				requests.nop=0;
-				requests.bcompress=0;
-				requests.bdecompress=0;
-				requests.gcompress=0;
-				requests.gdecompress=0;
-				requests.encrypt=0;
-				requests.decrypt=0;
-				requests.totalCommands=0;
-				int iter=0;
-				while((token = strtok_r(rest, " \n", &rest))){
-					if(strncmp(token, "proc-file", 9) == 0 || strncmp(token, "./sdstore", 8) == 0){
-						continue;
-					}else{
-						if(strncmp(token,"bcompress",9)==0){
-							requests.comando=strcat(requests.comando, token);
-							requests.comando=strcat(requests.comando, " ");
-							requests.bcompress+=1;
-							requests.totalCommands+=1;
-							i++;
-							size++;
-						}
-						
-						else if(strncmp(token,"bdecompress",11)==0){
-							requests.comando=strcat(requests.comando, token);
-							requests.comando=strcat(requests.comando, " ");
-							requests.bdecompress+=1;
-							requests.totalCommands+=1;
-							i++;
-							size++;
-						}
-						else if(strncmp(token,"nop",3)==0 ){
-							requests.comando=strcat(requests.comando, token);
-							requests.comando=strcat(requests.comando, " ");
-							requests.nop+=1;
-							requests.totalCommands+=1;
-							i++;
-							size++;
-						}
-						else if(strncmp(token,"gcompress",9)==0 ){
-							requests.comando=strcat(requests.comando, token);
-							requests.comando=strcat(requests.comando, " ");
-							requests.gcompress+=1;
-							requests.totalCommands+=1;
-							i++;
-							size++;
-						}
-						else if(strncmp(token,"gdecompress",11)==0 ){
-							requests.comando=strcat(requests.comando, token);
-							requests.comando=strcat(requests.comando, " ");
-							requests.gdecompress+=1;
-							requests.totalCommands+=1;
-							i++;
-							size++;
-						}
-						else if(strncmp(token,"encrypt",7)==0 ){
-							requests.comando=strcat(requests.comando, token);
-							requests.comando=strcat(requests.comando, " ");				
-							requests.encrypt+=1;
-							requests.totalCommands+=1;
-							i++;
-							size++;
-						}
-						else if(strncmp(token,"decrypt",7)==0){
-							requests.comando=strcat(requests.comando, token);
-							requests.comando=strcat(requests.comando, " ");
-							requests.decrypt+=1;
-							requests.totalCommands+=1;
-							i++;
-							size++;
-						}
-
-						else if(iter==0){
-							requests.source=strcpy(requests.source,token);
-						}
-						
-						else if (iter==1){
-							requests.destination=strcat(requests.destination, token);
-						}
-						else if(iter>1){
-							requests.pidCliente = strcat(requests.pidCliente,token);
-						}
-						iter+=1;
+			requests.comando = malloc(1024*sizeof(char));
+			requests.source=malloc(1024*sizeof(char));
+			requests.destination=malloc(1024*sizeof(char));
+			requests.pidCliente=malloc(1024*sizeof(char));
+			requests.nop=0;
+			requests.bcompress=0;
+			requests.bdecompress=0;
+			requests.gcompress=0;
+			requests.gdecompress=0;
+			requests.encrypt=0;
+			requests.decrypt=0;
+			requests.totalCommands=0;
+			int iter=0;
+			while((token = strtok_r(rest, " \n", &rest))){
+				if(strncmp(token, "proc-file", 9) == 0 || strncmp(token, "./sdstore", 8) == 0){
+					continue;
+				}else{
+					if(strncmp(token,"bcompress",9)==0){
+						requests.comando=strcat(requests.comando, token);
+						requests.comando=strcat(requests.comando, " ");
+						requests.bcompress+=1;
+						requests.totalCommands+=1;
+						i++;
+						size++;
 					}
+					
+					else if(strncmp(token,"bdecompress",11)==0){
+						requests.comando=strcat(requests.comando, token);
+						requests.comando=strcat(requests.comando, " ");
+						requests.bdecompress+=1;
+						requests.totalCommands+=1;
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"nop",3)==0 ){
+						requests.comando=strcat(requests.comando, token);
+						requests.comando=strcat(requests.comando, " ");
+						requests.nop+=1;
+						requests.totalCommands+=1;
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"gcompress",9)==0 ){
+						requests.comando=strcat(requests.comando, token);
+						requests.comando=strcat(requests.comando, " ");
+						requests.gcompress+=1;
+						requests.totalCommands+=1;
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"gdecompress",11)==0 ){
+						requests.comando=strcat(requests.comando, token);
+						requests.comando=strcat(requests.comando, " ");
+						requests.gdecompress+=1;
+						requests.totalCommands+=1;
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"encrypt",7)==0 ){
+						requests.comando=strcat(requests.comando, token);
+						requests.comando=strcat(requests.comando, " ");				
+						requests.encrypt+=1;
+						requests.totalCommands+=1;
+						i++;
+						size++;
+					}
+					else if(strncmp(token,"decrypt",7)==0){
+						requests.comando=strcat(requests.comando, token);
+						requests.comando=strcat(requests.comando, " ");
+						requests.decrypt+=1;
+						requests.totalCommands+=1;
+						i++;
+						size++;
+					}
+
+					else if(iter==0){
+						requests.source=strcpy(requests.source,token);
+					}
+					
+					else if (iter==1){
+						requests.destination=strcat(requests.destination, token);
+					}
+					else if(iter>1){
+						requests.pidCliente = strcat(requests.pidCliente,token);
+					}
+					iter+=1;
 				}
-
-				char nameOfFifo[1024] = "server_client_fifo_";
-				strcat(nameOfFifo,requests.pidCliente);
-
-
-				/*if((mkfifo(nameOfFifo, 0666)==-1) && errno != EEXIST){
-					perror("Erro na criação do fifo\n");
-					_exit(1);
-				}*/
-
-				if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
-					perror("Erro na abertura do fifo\n");
-					_exit(1);
-				}
-
-				if(requests.nop>commands.maxnop || requests.bcompress>commands.maxbcompress || requests.bdecompress>commands.maxbdecompress || requests.encrypt>commands.maxencrypt || requests.decrypt>commands.maxdecrypt || requests.gcompress>commands.maxgcompress || requests.gdecompress>commands.maxgdecompress){
-					strcpy(string, "Too many commands, couldn't execute transformations.\n");
-					write(servidor_cliente, string, strlen(string));
-					_exit(0);
-				}
-				pedidos[queuesize]=requests;
-				queuesize+=1;
-
-				strcpy(string, "Pending\n");
-				write(servidor_cliente,string, strlen(string));
-				close(servidor_cliente);
 			}
+
+			char nameOfFifo[1024] = "server_client_fifo_";
+			strcat(nameOfFifo,requests.pidCliente);
+
+			if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
+				perror("Erro na abertura do fifo que envia mensagem de pending\n");
+				_exit(1);
+			}
+
+			if(requests.nop>commands.maxnop || requests.bcompress>commands.maxbcompress || requests.bdecompress>commands.maxbdecompress || requests.encrypt>commands.maxencrypt || requests.decrypt>commands.maxdecrypt || requests.gcompress>commands.maxgcompress || requests.gdecompress>commands.maxgdecompress){
+				strcpy(string, "Too many commands, couldn't execute transformations.\n");
+				write(servidor_cliente, string, strlen(string));
+				close(servidor_cliente);
+				_exit(0);
+			}
+			pedidos[queuesize]=requests;
+			queuesize+=1;
+
+			strcpy(string, "Pending\n");
+			write(servidor_cliente,string, strlen(string));
+			
 				//ExecCommands
 		
 			if (queuesize>0){
@@ -387,13 +381,14 @@ int main(int argc, char* argv[]){
 						_exit(1);
 					}*/
 					if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
-						perror("Erro na abertura do fifo\n");
-						_exit(1);
+						perror("Erro na abertura do fifo que envia a mensagem de processing\n");
+						//_exit(1);
 					}
 					strcpy(string, "Processing\n");
 					write(servidor_cliente,string, strlen(string));
-					close(servidor_cliente);
+					//close(servidor_cliente);
 
+					//sleep(20);
 					if(cabeca.totalCommands==1){
 
 						if(fork() == 0){
@@ -486,8 +481,6 @@ int main(int argc, char* argv[]){
 							cont+=1;
 							i++;
 						}
-
-						lastCommands+=1;
 						//strcpy(string,"Concluded\n");
 						//servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666);
 						//write(servidor_cliente, string, strlen(string));
@@ -495,11 +488,8 @@ int main(int argc, char* argv[]){
 						//wait(NULL);
 					}
 
+					index++;
 					strcpy(string,"Concluded\n");
-					if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
-						perror("Erro na abertura do fifo\n");
-						_exit(1);
-					}
 					write(servidor_cliente, string, strlen(string));
 					close(servidor_cliente);
 
@@ -513,7 +503,9 @@ int main(int argc, char* argv[]){
 
 					_exit(0);
 				}
+				lastCommands++;
 			}
+			close(servidor_cliente);
 		}
 	}
 
