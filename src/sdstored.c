@@ -8,12 +8,6 @@
 #include <errno.h>
 
 
-int size = 0;
-char ***queue;
-int queuesize = 0;
-int lastCommands = 0;
-
-
 typedef struct commands{
 	int nop;
 	int bcompress;
@@ -115,7 +109,7 @@ int main(int argc, char* argv[]){
 		perror("cliente_servidor_fifo");
 		return 1;
 	}
-	//DEPOIS TORNAR FUNÇAO VOID
+
 	Request pedidos[1024];
 	Commands commands;
 	commands.nop=0;
@@ -137,6 +131,7 @@ int main(int argc, char* argv[]){
 	int queuesize=0;
 	int lastCommands=0;
 	int index = 0;
+	int size = 0;
 	char *funcDir = argv[2];
 
 	while(1){
@@ -159,10 +154,6 @@ int main(int argc, char* argv[]){
 			}
 			strcat(nameOfFifo, pid);
 
-			/*if((mkfifo(nameOfFifo, 0666) == -1) && errno != EEXIST){
-				perror("Erro na criação do fifo\n");
-				_exit(1);
-			}*/
 			if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
 				perror("Erro na abertura do fifo que envia o status (1º)\n");
 				_exit(1);
@@ -203,8 +194,6 @@ int main(int argc, char* argv[]){
 				strcat(message, transf7);
 
 				write(servidor_cliente, message, strlen(message));
-				//close(servidor_cliente);
-				//unlink(nameOfFifo);
 			}
 			else{
 				char *message="No processes in queue\n";
@@ -329,8 +318,6 @@ int main(int argc, char* argv[]){
 
 			strcpy(string, "Pending\n");
 			write(servidor_cliente,string, strlen(string));
-			
-				//ExecCommands
 		
 			if (queuesize>0){
 				if (fork()==0){
@@ -347,7 +334,7 @@ int main(int argc, char* argv[]){
 						perror("Erro no destino\n");
 						return 1;
 					}
-					//int status;
+
 					int pipeline[1024][2];
 					int flag = 0;
 
@@ -376,19 +363,15 @@ int main(int argc, char* argv[]){
 
 					char nameOfFifo[1024] = "server_client_fifo_";
 					strcat(nameOfFifo,cabeca.pidCliente);
-					/*if((mkfifo(nameOfFifo, 0666) == -1) && errno != EEXIST){
-						perror("Erro na criação do fifo\n");
-						_exit(1);
-					}*/
+					
 					if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
 						perror("Erro na abertura do fifo que envia a mensagem de processing\n");
-						//_exit(1);
+						_exit(1);
 					}
 					strcpy(string, "Processing\n");
 					write(servidor_cliente,string, strlen(string));
-					//close(servidor_cliente);
 
-					//sleep(20);
+
 					if(cabeca.totalCommands==1){
 
 						if(fork() == 0){
@@ -478,14 +461,10 @@ int main(int argc, char* argv[]){
 								}
 								close(pipeline[i-1][0]);
 							}
+							wait(NULL);
 							cont+=1;
 							i++;
 						}
-						//strcpy(string,"Concluded\n");
-						//servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666);
-						//write(servidor_cliente, string, strlen(string));
-						//unlink(nameOfFifo);
-						//wait(NULL);
 					}
 
 					index++;
@@ -505,6 +484,24 @@ int main(int argc, char* argv[]){
 				}
 				lastCommands++;
 			}
+			close(servidor_cliente);
+		}else{
+			char nameOfFifo[1024] = "server_client_fifo_";
+			char *token;
+			char* rest=buffer;
+			char* pid = malloc(1024*sizeof(char));
+			while((token = strtok_r(rest, " \n", &rest))){
+				strcpy(pid,token);
+			}
+			strcat(nameOfFifo, pid);
+
+			if((servidor_cliente = open(nameOfFifo, O_WRONLY|O_TRUNC, 0666)) == -1){
+				perror("Erro na abertura do fifo que envia mensagem de pending\n");
+				_exit(1);
+			}
+
+			char str[1024] = "Pedido inválido!\n";
+			write(servidor_cliente, str, strlen(str));
 			close(servidor_cliente);
 		}
 	}

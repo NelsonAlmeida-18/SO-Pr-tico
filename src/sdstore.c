@@ -42,7 +42,7 @@ void makeRequest(int argc, char *argv[]){
 		_exit(1);
 	}
 
-	while(i < argc){ //-1 para ignorar o \n
+	while(i < argc){ 
 		strcat(buffer, *argv);
 		strcat(buffer, " ");
 		i++;
